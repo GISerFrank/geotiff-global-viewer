@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SqlDialectMappings">
+    <file url="file://$PROJECT_DIR$/backend/app.py" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/backend/ingest_local.py" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/backend/init_dtable.py" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/backend/processing.py" dialect="PostgreSQL" />
+  </component>
+</project>

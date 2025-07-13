@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GeoTIFF 3D地球可视化系统</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.131.0/Cesium.js"></script>
+  <script src="https://unpkg.com/geotiff@2.1.3/dist-browser/geotiff.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.131.0/Widgets/widgets.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #cesiumContainer {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    /* 控制面板 */
+    .control-panel {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(20, 20, 30, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      min-width: 300px;
+      max-width: 500px;
+      color: white;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .control-panel h3 {
+      margin-bottom: 15px;
+      font-size: 16px;
+      color: #00d4ff;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .control-group {
+      margin-bottom: 20px;
+    }
+
+    .control-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #aaa;
+    }
+
+    .slider {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #00d4ff;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+    }
+
+    .slider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #00d4ff;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+    }
+
+    .toggle-btn {
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0;
+      background: rgba(0, 212, 255, 0.1);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 6px;
+      color: #00d4ff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 13px;
+    }
+
+    .toggle-btn:hover {
+      background: rgba(0, 212, 255, 0.2);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+    }
+
+    .toggle-btn.active {
+      background: rgba(0, 212, 255, 0.3);
+      border-color: #00d4ff;
+    }
+
+    /* 数据面板 */
+    .data-panel {
+      position: absolute;
+      top: 50px;
+      right: 20px;
+      background: rgba(20, 20, 30, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      color: white;
+      display: none;
+      min-width: 250px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .data-panel.show {
+      display: block;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .data-item {
+      margin: 10px 0;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .data-label {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 4px;
+    }
+
+    .data-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: #00d4ff;
+    }
+
+    /* 加载提示 */
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .loading-content {
+      text-align: center;
+      color: white;
+    }
+
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 3px solid rgba(0, 212, 255, 0.2);
+      border-top: 3px solid #00d4ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* 文件上传区域 */
+    .upload-area {
+      border: 2px dashed rgba(0, 212, 255, 0.5);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .upload-area:hover {
+      border-color: #00d4ff;
+      background: rgba(0, 212, 255, 0.05);
+    }
+
+    .upload-area.dragover {
+      border-color: #00ff88;
+      background: rgba(0, 255, 136, 0.1);
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    /* 图例 */
+    .legend {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(20, 20, 30, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 15px;
+      color: white;
+      font-size: 12px;
+    }
+
+    .legend-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #00d4ff;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 5px 0;
+    }
+
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+      border-radius: 3px;
+    }
+
+    /* 手风琴样式 */
+    .accordion-btn {
+      width: 100%;
+      padding: 12px;
+      background: rgba(0, 212, 255, 0.15);
+      border: 1px solid rgba(0, 212, 255, 0.4);
+      border-radius: 6px;
+      color: #00d4ff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: left;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .accordion-btn:hover {
+      background: rgba(0, 212, 255, 0.25);
+    }
+    .accordion-panel {
+      padding: 0 10px;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+  </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+
+<!-- 控制面板 -->
+<div class="control-panel">
+  <h3>数据控制</h3>
+
+  <div class="upload-area" id="uploadArea">
+    <div>📁 拖拽GeoTIFF文件到此处</div>
+    <div style="margin-top: 10px; font-size: 12px; color: #888;">或点击选择文件</div>
+    <input type="file" id="fileInput" class="file-input" accept=".tif,.tiff,.geotiff" multiple>
+  </div>
+
+  <div class="control-group" id="dataset-list-container">
+    <label>可用数据集</label>
+    <div id="dataset-list" style="max-height: 150px; overflow-y: auto;">
+      <p style="color: #888; font-size: 12px;">正在加载数据列表...</p>
+    </div>
+  </div>
+
+  <div class="control-group" id="active-layers-container">
+    <label>已加载图层</label>
+    <div id="active-layers-list" style="max-height: 200px; overflow-y: auto;">
+      <p id="no-active-layers-msg" style="color: #888; font-size: 12px;">当前无加载图层。</p>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <label>地形夸大系数: <span id="terrainScaleValue">2.0</span></label>
+    <input type="range" class="slider" id="terrainScale" min="0.5" max="5" step="0.1" value="2">
+  </div>
+
+  <div class="control-group">
+    <label>影像透明度: <span id="imageryAlphaValue">1.0</span></label>
+    <input type="range" class="slider" id="imageryAlpha" min="0" max="1" step="0.1" value="1">
+  </div>
+
+  <div class="control-group">
+    <button class="toggle-btn" id="toggleContour">📈 等高线</button>
+    <button class="toggle-btn" id="toggleShadow">🌅 地形阴影</button>
+  </div>
+
+  <div class="control-group">
+    <label>视角模式</label>
+    <button class="toggle-btn" id="viewOverview">🌍 总览</button>
+    <button class="toggle-btn" id="viewDetail">🔍 细节</button>
+    <button class="toggle-btn" id="viewFly">✈️ 飞行</button>
+  </div>
+</div>
+
+<!-- 数据显示面板 -->
+<div class="data-panel" id="dataPanel">
+  <h3 style="color: #00d4ff; margin-bottom: 15px;">位置信息</h3>
+  <div class="data-item">
+    <div class="data-label">经度</div>
+    <div class="data-value" id="longitude">-</div>
+  </div>
+  <div class="data-item">
+    <div class="data-label">纬度</div>
+    <div class="data-value" id="latitude">-</div>
+  </div>
+  <div class="data-item">
+    <div class="data-label">高程</div>
+    <div class="data-value" id="elevation">-</div>
+  </div>
+  <div class="data-item">
+    <div class="data-label">坡度</div>
+    <div class="data-value" id="slope">-</div>
+  </div>
+</div>
+
+<!-- 图例 -->
+<div class="legend" id="slopeLegend" style="display: none;">
+  <div class="legend-title">坡度图例</div>
+  <div class="legend-item">
+    <div class="legend-color" style="background: #00ff00;"></div>
+    <span>0° - 5° 平缓</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background: #ffff00;"></div>
+    <span>5° - 15° 缓坡</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background: #ff8800;"></div>
+    <span>15° - 25° 陡坡</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background: #ff0000;"></div>
+    <span>&gt; 25° 极陡</span>
+  </div>
+</div>
+
+<!-- 加载提示 -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-content">
+    <div class="loading-spinner"></div>
+    <div>初始化3D地球...</div>
+  </div>
+</div>
+
+<script type="module">
+  // Cesium配置
+  Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI0YjA3YzllNi0xMWE1LTRlZjYtOTc1NC03ZTY4M2QyMzVjMzMiLCJpZCI6MzIwNDM3LCJpYXQiOjE3NTIxODk2NTB9.qGb5hOcXISaOGIWG0CJfGOKA6wEO8x4xzvThJ9G-3Ww';
+
+  // 初始化Cesium Viewer
+  // Initialize the Cesium Viewer in the HTML element with the `cesiumContainer` ID.
+  const viewer = new Cesium.Viewer('cesiumContainer', {
+    terrain: Cesium.Terrain.fromWorldTerrain(),
+    // --- 添加以下两行 ---
+    requestRenderMode: true, // 开启按需渲染
+    maximumRenderTimeChange: Infinity, // 仅在数据或视图变化时渲染
+  });
+
+  // Fly the camera to San Francisco at the given longitude, latitude, and height.
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(-122.4175, 37.655, 400),
+    orientation: {
+      heading: Cesium.Math.toRadians(0.0),
+      pitch: Cesium.Math.toRadians(-15.0),
+    }
+  });
+
+  // Add Cesium OSM Buildings, a global 3D buildings layer.
+  // const buildingTileset = await Cesium.createOsmBuildingsAsync();
+  // viewer.scene.primitives.add(buildingTileset);
+
+  // 设置初始视角
+  viewer.scene.globe.enableLighting = true;
+  viewer.scene.globe.depthTestAgainstTerrain = true;
+  // 将地形夸大系数设为 2.0
+  viewer.scene.globe.terrainExaggeration = 2.0;
+
+  // 数据存储
+  let loadedDatasets = [];
+  let currentTerrainScale = 2.0;
+  let slopeLayerVisible = true;
+  let imageryLayerVisible = true;
+
+  // 隐藏加载提示
+  setTimeout(() => {
+    document.getElementById('loadingOverlay').style.display = 'none';
+  }, 2000);
+
+  // 文件上传处理
+  const uploadArea = document.getElementById('uploadArea');
+  const fileInput = document.getElementById('fileInput');
+
+  uploadArea.addEventListener('click', () => fileInput.click());
+
+  uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+  });
+
+  uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('dragover');
+  });
+
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    handleFiles(e.target.files);
+  });
+
+  const API_BASE_URL = 'http://localhost:5000';
+  // let currentImageryLayer = null; // 用于跟踪当前显示的图层
+  let activeLayers = new Map(); // 使用 Map 数据结构，用图层id作为键，方便增删
+
+  // /**
+  //  * 在Cesium中加载指定的数据集图层
+  //  * @param {object} dataset - 包含 name, image_url, bbox 等信息的数据集对象
+  //  */
+  // async function loadDatasetOnMap(dataset) {
+  //   // 如果当前已有图层，先移除
+  //   if (currentImageryLayer) {
+  //     viewer.imageryLayers.remove(currentImageryLayer, true);
+  //     currentImageryLayer = null;
+  //   }
+  //
+  //   console.log(`正在加载数据集: ${dataset.name}`);
+  //   try {
+  //       // 步骤 1: 创建影像提供者 (ImageryProvider)
+  //       // 这个对象负责从指定的URL和范围内提供图像数据。
+  //       const imageryProvider = new Cesium.SingleTileImageryProvider({
+  //         url: dataset.image_url,
+  //         rectangle: Cesium.Rectangle.fromDegrees(
+  //                 dataset.bbox_west,
+  //                 dataset.bbox_south,
+  //                 dataset.bbox_east,
+  //                 dataset.bbox_north
+  //         )
+  //       });
+  //
+  //       // 步骤 2: 使用该提供者显式创建一个影像图层 (ImageryLayer)
+  //       // 这是一个完整的图层对象，包含了渲染所需的所有属性和方法。
+  //       const newLayer = new Cesium.ImageryLayer(imageryProvider);
+  //
+  //       // 步骤 3: 将创建好的、完整的图层对象添加到 Viewer 中
+  //       viewer.imageryLayers.add(newLayer);
+  //
+  //       // 步骤 4: 飞行到新添加图层的范围，让用户可以立刻看到数据
+  //       await viewer.flyTo(newLayer);
+  //
+  //       console.log("成功添加GeoTIFF图层！");
+  //
+  //     } catch (error) {
+  //       console.error("上传或处理文件时出错:", error);
+  //       alert(`处理失败: ${error.message}`);
+  //     } finally {
+  //       document.getElementById('loadingOverlay').style.display = 'none';
+  //     }
+  // }
+
+  /**
+   * 新增：渲染“已加载图层”面板的函数
+   */
+  function renderActiveLayersPanel() {
+    const listContainer = document.getElementById('active-layers-list');
+    const noLayersMsg = document.getElementById('no-active-layers-msg');
+    const slopeLegend = document.getElementById('slopeLegend'); // 获取图例元素
+
+    listContainer.innerHTML = ''; // 清空
+    listContainer.appendChild(noLayersMsg); // 先把提示消息加回去
+
+    let isSlopeLayerActive = false; // 新增一个标志位
+
+    if (activeLayers.size === 0) {
+      noLayersMsg.style.display = 'block';
+    } else {
+      noLayersMsg.style.display = 'none';
+      activeLayers.forEach((layerData, layerId) => {
+        const layerControlHTML = `
+                <div class="active-layer-item" style="background: rgba(255,255,255,0.05); border-radius: 6px; padding: 10px; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 13px;">${layerData.name}</span>
+                        <div>
+                            <button class="layer-btn" title="缩放至图层" data-layer-id="${layerId}">🔍</button>
+                            <button class="layer-btn" title="移除图层" data-layer-id="${layerId}">❌</button>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span>👁️</span>
+                        <input type="range" class="slider layer-opacity-slider" min="0" max="1" step="0.05" value="${layerData.layer.alpha}" data-layer-id="${layerId}">
+                    </div>
+                </div>
+            `;
+        listContainer.insertAdjacentHTML('beforeend', layerControlHTML);
+        // --- 新增逻辑：检查是否有坡度图层处于激活状态 ---
+        if (layerData.category === '坡度分析') {
+          isSlopeLayerActive = true;
+        }
+      });
+    }
+
+    // --- 新增逻辑：根据标志位，决定是否显示图例 ---
+    if (isSlopeLayerActive) {
+      slopeLegend.style.display = 'block';
+    } else {
+      slopeLegend.style.display = 'none';
+    }
+
+    // --- 为新生成的控件绑定事件 ---
+    document.querySelectorAll('.layer-opacity-slider').forEach(slider => {
+      slider.addEventListener('input', (e) => {
+        const layerId = e.target.dataset.layerId;
+        const layerData = activeLayers.get(layerId);
+        if (layerData) {
+          viewer.scene.requestRender(); // <-- 手动请求渲染以更新视图
+        }
+      });
+    });
+
+    document.querySelectorAll('.active-layer-item .layer-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const layerId = e.currentTarget.dataset.layerId;
+        const layerData = activeLayers.get(layerId);
+        if (!layerData) return;
+
+        if (e.currentTarget.title === '缩放至图层') {
+          viewer.flyTo(layerData.layer);
+        } else if (e.currentTarget.title === '移除图层') {
+          viewer.imageryLayers.remove(layerData.layer, true);
+          activeLayers.delete(layerId);
+          // 更新可用数据集列表中的按钮状态
+          const sourceButton = document.querySelector(`.dataset-btn[data-dataset-id='${layerData.id}']`);
+          if (sourceButton) {
+            sourceButton.classList.remove('active');
+            sourceButton.textContent = `🛰️ ${layerData.name}`;
+          }
+          renderActiveLayersPanel(); // 重新渲染面板
+        }
+      });
+    });
+  }
+
+  /**
+   * 重构: “可用数据集”按钮的点击逻辑
+   * @param {object} dataset - 数据集对象
+   * @param {HTMLElement} buttonElement - 被点击的按钮
+   */
+  function toggleDatasetOnMap(dataset, buttonElement) {
+    const layerId = `layer-${dataset.id}`;
+
+    // 如果图层已在地图上，则移除它
+    if (activeLayers.has(layerId)) {
+      const layerData = activeLayers.get(layerId);
+      viewer.imageryLayers.remove(layerData.layer, true);
+      activeLayers.delete(layerId);
+      buttonElement.classList.remove('active');
+      buttonElement.textContent = `🛰️ ${dataset.name}`;
+    }
+    // 如果是新图层，则添加到地图
+    else {
+      console.log(`正在加载数据集: ${dataset.name}`);
+      const imageryProvider = new Cesium.SingleTileImageryProvider({
+        url: dataset.image_url,
+        rectangle: Cesium.Rectangle.fromDegrees(
+                dataset.bbox_west, dataset.bbox_south,
+                dataset.bbox_east, dataset.bbox_north
+        )
+      });
+
+      const newLayer = viewer.imageryLayers.addImageryProvider(imageryProvider);
+      activeLayers.set(layerId, { ...dataset, layer: newLayer });
+
+      viewer.flyTo(newLayer);
+      buttonElement.classList.add('active');
+      buttonElement.textContent = `✅ ${dataset.name}`;
+    }
+
+    // 无论添加或删除，都重新渲染“已加载图层”面板
+    renderActiveLayersPanel();
+  }
+
+  /**
+   * 从后端获取数据集列表并渲染到UI
+   */
+  async function fetchAndDisplayDatasets() {
+    const listContainer = document.getElementById('dataset-list');
+    listContainer.innerHTML = '<p style="color: #888; font-size: 12px;">正在刷新数据列表...</p>';
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/datasets`);
+      const groupedDatasets = await response.json(); // 现在获取的是分组数据
+
+      listContainer.innerHTML = ''; // 清空
+
+      if (groupedDatasets.length === 0) {
+        listContainer.innerHTML = '<p style="color: #888; font-size: 12px;">暂无数据，请先上传。</p>';
+        return;
+      }
+
+      // --- 遍历分组来创建手风琴 UI ---
+      groupedDatasets.forEach(group => {
+        // 1. 创建分类按钮
+        const accordionBtn = document.createElement('button');
+        accordionBtn.className = 'accordion-btn';
+        accordionBtn.textContent = `📁 ${group.category} (${group.datasets.length})`;
+        accordionBtn.title = group.description;
+        listContainer.appendChild(accordionBtn);
+
+        // 2. 创建分类下的数据集面板
+        const panel = document.createElement('div');
+        panel.className = 'accordion-panel';
+        listContainer.appendChild(panel);
+
+        // 3. 将数据集按钮添加到面板中
+        group.datasets.forEach(dataset => {
+          const button = document.createElement('button');
+          button.className = 'toggle-btn dataset-btn';
+          // --- 新增：根据 source_type 添加图标 ---
+          let icon = '🛰️'; // 默认图标
+          if (dataset.source_type === 'LOCAL') {
+            icon = '💻'; // 本地文件的图标
+          } else if (dataset.source_type === 'GOOGLE_DRIVE') {
+            icon = '☁️'; // Google Drive 文件的图标
+          }
+          button.textContent = `${icon} ${dataset.name}`;
+          button.title = `加载/卸载 ${dataset.name}`;
+          button.dataset.datasetId = dataset.id;
+
+          // 检查图层是否已在 activeLayers 中，以保持按钮状态
+          const layerId = `layer-${dataset.id}`;
+          if (activeLayers.has(layerId)) {
+            button.classList.add('active');
+            button.textContent = `✅ ${dataset.name}`;
+          }
+
+          button.addEventListener('click', (e) => {
+            e.stopPropagation(); // 阻止事件冒泡到手风琴按钮
+            toggleDatasetOnMap(dataset, button);
+          });
+          panel.appendChild(button);
+        });
+
+        // 4. 为分类按钮添加点击事件，以展开/折叠面板
+        accordionBtn.addEventListener('click', function() {
+          this.classList.toggle('active');
+          const panel = this.nextElementSibling;
+          if (panel.style.maxHeight) {
+            panel.style.maxHeight = null;
+          } else {
+            // 设置一个足够大的高度以容纳所有内容
+            panel.style.maxHeight = panel.scrollHeight + "px";
+          }
+        });
+      });
+
+    } catch (error) {
+      console.error("获取数据集列表失败:", error);
+      listContainer.innerHTML = '<p style="color: #f00; font-size: 12px;">加载列表失败！</p>';
+    }
+  }
+
+  // 页面加载完成后，立即获取并显示数据集列表
+  document.addEventListener('DOMContentLoaded', fetchAndDisplayDatasets);
+
+  // async function handleFiles(files) {
+  //   if (files.length === 0) {
+  //     alert('请选择一个文件');
+  //     return;
+  //   }
+  //   const file = files[0];
+  //   document.getElementById('loadingOverlay').style.display = 'flex';
+  //
+  //   // 创建 FormData 来包装文件
+  //   const formData = new FormData();
+  //   formData.append('file', file);
+  //
+  //   try {
+  //     // 使用 fetch API 将文件 POST 到您的后端服务器
+  //     const response = await fetch('http://localhost:5000/upload-geotiff', {
+  //       method: 'POST',
+  //       body: formData,
+  //     });
+  //
+  //     if (!response.ok) {
+  //       throw new Error(`服务器错误: ${response.statusText}`);
+  //     }
+  //
+  //     const data = await response.json(); // 解析后端返回的JSON
+  //
+  //     // ===================================================================
+  //     // 【重要修复】采用更稳健的图层创建与添加方式
+  //     // ===================================================================
+  //
+  //     // 步骤 1: 创建影像提供者 (ImageryProvider)
+  //     // 这个对象负责从指定的URL和范围内提供图像数据。
+  //     const imageryProvider = new Cesium.SingleTileImageryProvider({
+  //       url: data.imageUrl,
+  //       rectangle: Cesium.Rectangle.fromDegrees(
+  //               data.bbox[0],
+  //               data.bbox[1],
+  //               data.bbox[2],
+  //               data.bbox[3]
+  //       )
+  //     });
+  //
+  //     // 步骤 2: 使用该提供者显式创建一个影像图层 (ImageryLayer)
+  //     // 这是一个完整的图层对象，包含了渲染所需的所有属性和方法。
+  //     const newLayer = new Cesium.ImageryLayer(imageryProvider);
+  //
+  //     // 步骤 3: 将创建好的、完整的图层对象添加到 Viewer 中
+  //     viewer.imageryLayers.add(newLayer);
+  //
+  //     // 步骤 4: 飞行到新添加图层的范围，让用户可以立刻看到数据
+  //     await viewer.flyTo(newLayer);
+  //
+  //     console.log("成功添加GeoTIFF图层！");
+  //
+  //   } catch (error) {
+  //     console.error("上传或处理文件时出错:", error);
+  //     alert(`处理失败: ${error.message}`);
+  //   } finally {
+  //     document.getElementById('loadingOverlay').style.display = 'none';
+  //   }
+  // }
+  // ===================================================================
+  // 修改: 文件上传处理逻辑
+  // ===================================================================
+
+  async function handleFiles(files) {
+    if (files.length === 0) {
+      alert('请选择一个文件');
+      return;
+    }
+    const file = files[0];
+    document.getElementById('loadingOverlay').style.display = 'flex';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/upload-geotiff`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        alert(result.message); // 弹出成功提示
+        fetchAndDisplayDatasets(); // 上传成功后，刷新数据集列表
+      } else {
+        throw new Error(result.error || '上传失败');
+      }
+
+    } catch (error) {
+      console.error("上传或处理文件时出错:", error);
+      alert(`处理失败: ${error.message}`);
+    } finally {
+      document.getElementById('loadingOverlay').style.display = 'none';
+    }
+  }
+
+  // 控制面板事件
+  document.getElementById('terrainScale').addEventListener('input', (e) => {
+    const newExaggeration = parseFloat(e.target.value);
+    document.getElementById('terrainScaleValue').textContent = newExaggeration.toFixed(1);
+
+    console.log(newExaggeration)
+    // 更新地形夸大系数
+    viewer.scene.globe.terrainExaggeration = newExaggeration;
+
+    // 手动请求一次场景重绘，以应用更改
+    viewer.scene.requestRender();
+  });
+
+  document.getElementById('imageryAlpha').addEventListener('input', (e) => {
+    const alpha = parseFloat(e.target.value);
+    document.getElementById('imageryAlphaValue').textContent = alpha.toFixed(1);
+    if (viewer.imageryLayers.length > 0) {
+      viewer.imageryLayers.get(0).alpha = alpha;
+    }
+  });
+
+  document.getElementById('slopeAlpha').addEventListener('input', (e) => {
+    const alpha = parseFloat(e.target.value);
+    document.getElementById('slopeAlphaValue').textContent = alpha.toFixed(1);
+    // 更新坡度图层透明度
+  });
+
+  // 切换按钮
+  document.getElementById('toggleImagery').addEventListener('click', function() {
+    this.classList.toggle('active');
+    imageryLayerVisible = !imageryLayerVisible;
+    if (viewer.imageryLayers.length > 0) {
+      viewer.imageryLayers.get(0).show = imageryLayerVisible;
+    }
+  });
+
+  document.getElementById('toggleSlope').addEventListener('click', function() {
+    this.classList.toggle('active');
+    slopeLayerVisible = !slopeLayerVisible;
+    document.getElementById('slopeLegend').style.display = slopeLayerVisible ? 'block' : 'none';
+  });
+
+  document.getElementById('toggleContour').addEventListener('click', function() {
+    this.classList.toggle('active');
+    // 切换等高线显示
+  });
+
+  // --- 地形阴影 ---
+  // 首先，在 viewer 初始化后，同步按钮的初始状态
+  const toggleShadowBtn = document.getElementById('toggleShadow');
+
+  // 我们的 enableLighting 默认为 true，所以让按钮也激活
+  if (viewer.scene.globe.enableLighting) {
+    toggleShadowBtn.classList.add('active');
+  }
+
+  toggleShadowBtn.addEventListener('click', function() {
+    this.classList.toggle('active');
+    const shadowsEnabled = this.classList.contains('active');
+
+    // 开启或关闭光照
+    viewer.scene.globe.enableLighting = shadowsEnabled;
+
+    if (shadowsEnabled) {
+      // 如果开启阴影，设置一个容易观察到阴影的时间（例如，设置为下午4点）
+      const specificTime = Cesium.JulianDate.fromIso8601("2025-07-12T16:00:00Z");
+      viewer.clock.currentTime = specificTime;
+      // 确保时间轴动画暂停，以保持在该时刻
+      viewer.clock.shouldAnimate = false;
+    }
+
+    // 请求渲染以更新视图
+    viewer.scene.requestRender();
+  });
+
+  // 视角模式
+  document.getElementById('viewOverview').addEventListener('click', () => {
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(116.3974, 39.9093, 50000),
+      orientation: {
+        heading: 0,
+        pitch: Cesium.Math.toRadians(-90),
+        roll: 0
+      }
+    });
+  });
+
+  document.getElementById('viewDetail').addEventListener('click', () => {
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(116.3974, 39.9093, 2000),
+      orientation: {
+        heading: 0,
+        pitch: Cesium.Math.toRadians(-30),
+        roll: 0
+      }
+    });
+  });
+
+  document.getElementById('viewFly').addEventListener('click', () => {
+    // 开始飞行模式
+    const flyPath = [
+      {lon: 116.37, lat: 39.88, height: 1500},
+      {lon: 116.40, lat: 39.90, height: 2000},
+      {lon: 116.42, lat: 39.92, height: 1800},
+      {lon: 116.39, lat: 39.91, height: 1600}
+    ];
+
+    let currentIndex = 0;
+    function flyToNext() {
+      if (currentIndex >= flyPath.length) {
+        currentIndex = 0;
+      }
+      const point = flyPath[currentIndex];
+      viewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(point.lon, point.lat, point.height),
+        duration: 3,
+        complete: () => {
+          currentIndex++;
+          viewer.scene.requestRender();
+          setTimeout(flyToNext, 1000);
+        }
+      });
+    }
+    flyToNext();
+  });
+
+  // 鼠标移动事件 - 显示位置信息
+  const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+  handler.setInputAction((movement) => {
+    const cartesian = viewer.camera.pickEllipsoid(movement.endPosition, viewer.scene.globe.ellipsoid);
+    if (cartesian) {
+      const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+      const longitude = Cesium.Math.toDegrees(cartographic.longitude);
+      const latitude = Cesium.Math.toDegrees(cartographic.latitude);
+
+      // 获取地形高度
+      const terrainProvider = viewer.terrainProvider;
+      Cesium.sampleTerrainMostDetailed(terrainProvider, [cartographic]).then((updatedPositions) => {
+        const height = updatedPositions[0].height || 0;
+
+        document.getElementById('longitude').textContent = longitude.toFixed(6) + '°';
+        document.getElementById('latitude').textContent = latitude.toFixed(6) + '°';
+        document.getElementById('elevation').textContent = height.toFixed(1) + ' m';
+
+        // 计算坡度（简化版）
+        const slope = Math.random() * 30;  // 实际项目中需要根据DEM计算
+        document.getElementById('slope').textContent = slope.toFixed(1) + '°';
+
+        document.getElementById('dataPanel').classList.add('show');
+      });
+    }
+  }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+  // 添加粒子效果（可选）
+  function addParticleSystem() {
+    const particleSystem = viewer.scene.primitives.add(new Cesium.ParticleSystem({
+      image: './particle.png',  // 需要粒子图片
+      startColor: Cesium.Color.CYAN.withAlpha(0.7),
+      endColor: Cesium.Color.WHITE.withAlpha(0.0),
+      startScale: 1.0,
+      endScale: 5.0,
+      minimumParticleLife: 1.0,
+      maximumParticleLife: 3.0,
+      minimumSpeed: 5.0,
+      maximumSpeed: 10.0,
+      imageSize: new Cesium.Cartesian2(20, 20),
+      emissionRate: 50.0,
+      lifetime: 16.0,
+      emitter: new Cesium.CircleEmitter(1000.0),
+      modelMatrix: Cesium.Matrix4.fromTranslation(Cesium.Cartesian3.fromDegrees(116.3974, 39.9093, 1000)),
+      emitterModelMatrix: Cesium.Matrix4.fromTranslation(new Cesium.Cartesian3(0.0, 0.0, 100.0))
+    }));
+  }
+
+  // 键盘快捷键
+  document.addEventListener('keydown', (e) => {
+    switch(e.key) {
+      case 'h':  // 显示/隐藏UI
+        document.querySelector('.control-panel').style.display =
+                document.querySelector('.control-panel').style.display === 'none' ? 'block' : 'none';
+        break;
+      case 'r':  // 重置视角
+        viewer.camera.flyHome(1.5);
+        break;
+      case 'f':  // 全屏
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+        } else {
+          document.exitFullscreen();
+        }
+        break;
+    }
+  });
+</script>
+</body>
+</html>

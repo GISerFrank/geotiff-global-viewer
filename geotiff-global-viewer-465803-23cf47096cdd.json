@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "geotiff-global-viewer-465803",
+  "private_key_id": "23cf47096cdd94235e419d9aee7509c1b88abf9d",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC5dsNSB4meeMbv\nK7x8csg6zLvK2guOSyCdUHgMtfgws3r9kIxODRU49ynLNDWCSOVfMc/UyXKhQp20\nm3z/+G3GfNE7HmpcyMUvVm8dFlemT8vt2TScQDq3ZJ9WPtWwwCaCYHHuvlRbYraS\n/w2vujKvhzUedbRgPBUae3JtFxzB5SC7f2Q6Pte1pZtqhgSDGudqnhel5KEFvyxu\njXMo0FRcywnKHW9HUD2ZmZ/t+tPJ4oh1/yswMtaOVPTFTTXuS+XsSqWbweAF4g/r\nRh7lLK/HU79gQNqSPYtx49ggwGVS65rlgjO7Htq+xjsp6Oxtrafn1lLxIp8hcfRh\nN9e68fLVAgMBAAECggEAQhRxIkyCOZ7xzmyoYzToZ57juDJ5VJErBTITHABH9l40\nj5zNiM+7hIj38Klg+VMsun6+fKPr/k4Eb8HIx1EGF+cIC4baQcXdD/E9dMEtqJmc\n4Nl3l8aAxTAKX4nSzH+iGOjxHy3cU5U31OcgQsDWZ1kG0ZwBkRpHMKDUU88c1W5H\nsOyWrl9P747dkIHmX3e08kRsGQq8CEu+n+9hPn8KBLg/MMThC524P0T0qybpP+Ha\nyj1RIzIZsHWj8BnYz8pijSfozcnaE0RkSotOVeLgL13E4Yhs+O1JE+dylFV6me/Z\nqO3cma7KLxd9qkbAU/JlPdttps/1YfO/IqFygG4pPwKBgQD6lpRHL+pTW3vyd2V+\njYg36UfLSgQA0CzI/g2z5BYm986FnK4ofmA3ngcAzvtIHdlYCN+4vD3SxfCIltPD\n82QdCdpj3QzXSW6rOY3oeiSFHdlgUJZ1d/SKEJixchVM7j4FTmOaMT6MCxbm5Bs7\nfs0G7kVWkBBv6t3i8IYtwKwrGwKBgQC9eCH74dCrELR0bPaZxul7w5APa2BBRvTp\nXEWEzV2zgacV1ieSmiM34fAsMOO6JeGuSN2m3Pj35HGj2dFSsdOzmUT6uNyrDYqo\nLg3TqHOqyF+OxqKiABMN/GAimdC9G5X6qfntTyQlCtuvI7ryuNpgrAau1SqWNDmv\naaNfLQrIzwKBgC4yaG+fQ8HOUdFndYyZJw23sgamRIqp1jfPrlMFr5fLg4VaVzkb\n4z0dowjhH64x4om6SRRTj8o1t5xWwf+T9VbtJBfY/q8J2J80YxcCvYzU7eg1sydA\n0BJL8Pp1n7upCEIOK4qXnYJP4Q776pFTVRT8BEhrEryvPezCjtoMdTEVAoGAeDBN\ntn+PpARrxHMel3vzvnvW1cEyhRYi5CmRO+Yea3FycUqxPbEjaB6eARpeS0YefDVi\nzafdEztJzzusKj394i727+j2qldjvr3ALaTtAsgqveJJZmSPsc6HmUtje6KVKDZN\nAXmznv/dTaNnwvL6LFrTvnIgmrm0Yg6sAQMMlUcCgYEA2nkvrq4lrop4VzCViJOD\nrVqYAm6Ix4v8kth8G9T8Oh99kHUS10Ep8+KmUoFhv0mH4mw/zBmgs4KT69MUN0ky\nnifa0P7x+duUaXdf3Ln76OfXw6NzeozihSRCL3y/ihiqqRYyTz1Xr4aebTaQNTaC\n2Wr7gtBuZ/DoBf9lF2Mb/DU=\n-----END PRIVATE KEY-----\n",
+  "client_email": "giserfrank@geotiff-global-viewer-465803.iam.gserviceaccount.com",
+  "client_id": "108902385649952395398",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/giserfrank%40geotiff-global-viewer-465803.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
