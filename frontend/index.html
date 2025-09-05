@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GeoTIFF 3D地球可视化系统</title>
+  <title>GeoTIFF 3D Earth Visualization</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.131.0/Cesium.js"></script>
   <script src="https://unpkg.com/geotiff@2.1.3/dist-browser/geotiff.js"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.131.0/Widgets/widgets.css" rel="stylesheet">
@@ -286,90 +286,90 @@
 
 <!-- 控制面板 -->
 <div class="control-panel">
-  <h3>数据控制</h3>
+  <h3>Data Control</h3>
 
   <div class="upload-area" id="uploadArea">
-    <div>📁 拖拽GeoTIFF文件到此处</div>
-    <div style="margin-top: 10px; font-size: 12px; color: #888;">或点击选择文件</div>
+    <div>📁 Drag Geotiff files here</div>
+    <div style="margin-top: 10px; font-size: 12px; color: #888;">or click to select files</div>
     <input type="file" id="fileInput" class="file-input" accept=".tif,.tiff,.geotiff" multiple>
   </div>
 
   <div class="control-group" id="dataset-list-container">
-    <label>可用数据集</label>
+    <label>Available Dataset</label>
     <div id="dataset-list" style="max-height: 150px; overflow-y: auto;">
-      <p style="color: #888; font-size: 12px;">正在加载数据列表...</p>
+      <p style="color: #888; font-size: 12px;">Loading Data List...</p>
     </div>
   </div>
 
   <div class="control-group" id="active-layers-container">
-    <label>已加载图层</label>
+    <label>Loaded Layers</label>
     <div id="active-layers-list" style="max-height: 200px; overflow-y: auto;">
-      <p id="no-active-layers-msg" style="color: #888; font-size: 12px;">当前无加载图层。</p>
+      <p id="no-active-layers-msg" style="color: #888; font-size: 12px;">No Loaded Layer</p>
     </div>
   </div>
 
   <div class="control-group">
-    <label>地形夸大系数: <span id="terrainScaleValue">2.0</span></label>
+    <label>Terrain Exaggeration: <span id="terrainScaleValue">2.0</span></label>
     <input type="range" class="slider" id="terrainScale" min="0.5" max="5" step="0.1" value="2">
   </div>
 
   <div class="control-group">
-    <label>影像透明度: <span id="imageryAlphaValue">1.0</span></label>
+    <label>Imagery Opacity: <span id="imageryAlphaValue">1.0</span></label>
     <input type="range" class="slider" id="imageryAlpha" min="0" max="1" step="0.1" value="1">
   </div>
 
   <div class="control-group">
-    <button class="toggle-btn" id="toggleContour">📈 等高线</button>
-    <button class="toggle-btn" id="toggleShadow">🌅 地形阴影</button>
+    <button class="toggle-btn" id="toggleContour">📈 Contour</button>
+    <button class="toggle-btn" id="toggleShadow">🌅 Terrain Shadow</button>
   </div>
 
   <div class="control-group">
-    <label>视角模式</label>
-    <button class="toggle-btn" id="viewOverview">🌍 总览</button>
-    <button class="toggle-btn" id="viewDetail">🔍 细节</button>
-    <button class="toggle-btn" id="viewFly">✈️ 飞行</button>
+    <label>View Mode</label>
+    <button class="toggle-btn" id="viewOverview">🌍 Overview</button>
+    <button class="toggle-btn" id="viewDetail">🔍 Detail</button>
+    <button class="toggle-btn" id="viewFly">✈️ Fly</button>
   </div>
 </div>
 
 <!-- 数据显示面板 -->
 <div class="data-panel" id="dataPanel">
-  <h3 style="color: #00d4ff; margin-bottom: 15px;">位置信息</h3>
+  <h3 style="color: #00d4ff; margin-bottom: 15px;">Location Information</h3>
   <div class="data-item">
-    <div class="data-label">经度</div>
+    <div class="data-label">Longitude</div>
     <div class="data-value" id="longitude">-</div>
   </div>
   <div class="data-item">
-    <div class="data-label">纬度</div>
+    <div class="data-label">Latitude</div>
     <div class="data-value" id="latitude">-</div>
   </div>
   <div class="data-item">
-    <div class="data-label">高程</div>
+    <div class="data-label">Elevation</div>
     <div class="data-value" id="elevation">-</div>
   </div>
   <div class="data-item">
-    <div class="data-label">坡度</div>
+    <div class="data-label">Slope</div>
     <div class="data-value" id="slope">-</div>
   </div>
 </div>
 
 <!-- 图例 -->
 <div class="legend" id="slopeLegend" style="display: none;">
-  <div class="legend-title">坡度图例</div>
+  <div class="legend-title">Slope Legend</div>
   <div class="legend-item">
     <div class="legend-color" style="background: #00ff00;"></div>
-    <span>0° - 5° 平缓</span>
+    <span>0° - 5°</span>
   </div>
   <div class="legend-item">
     <div class="legend-color" style="background: #ffff00;"></div>
-    <span>5° - 15° 缓坡</span>
+    <span>5° - 15°</span>
   </div>
   <div class="legend-item">
     <div class="legend-color" style="background: #ff8800;"></div>
-    <span>15° - 25° 陡坡</span>
+    <span>15° - 25°</span>
   </div>
   <div class="legend-item">
     <div class="legend-color" style="background: #ff0000;"></div>
-    <span>&gt; 25° 极陡</span>
+    <span>&gt; 25°</span>
   </div>
 </div>
 
@@ -377,7 +377,7 @@
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-content">
     <div class="loading-spinner"></div>
-    <div>初始化3D地球...</div>
+    <div>Initializing 3D Earth...</div>
   </div>
 </div>
 
@@ -449,7 +449,7 @@
     handleFiles(e.target.files);
   });
 
-  const API_BASE_URL = 'http://localhost:5000';
+  const API_BASE_URL = 'https://geotiff-global-viewer.onrender.com';
   // let currentImageryLayer = null; // 用于跟踪当前显示的图层
   let activeLayers = new Map(); // 使用 Map 数据结构，用图层id作为键，方便增删
 
@@ -533,7 +533,7 @@
             `;
         listContainer.insertAdjacentHTML('beforeend', layerControlHTML);
         // --- 新增逻辑：检查是否有坡度图层处于激活状态 ---
-        if (layerData.category === '坡度分析') {
+        if (layerData.category === 'Slope Analysis') {
           isSlopeLayerActive = true;
         }
       });
@@ -563,9 +563,9 @@
         const layerData = activeLayers.get(layerId);
         if (!layerData) return;
 
-        if (e.currentTarget.title === '缩放至图层') {
+        if (e.currentTarget.title === 'Zoom to Layer') {
           viewer.flyTo(layerData.layer);
-        } else if (e.currentTarget.title === '移除图层') {
+        } else if (e.currentTarget.title === 'Remove Layer') {
           viewer.imageryLayers.remove(layerData.layer, true);
           activeLayers.delete(layerId);
           // 更新可用数据集列表中的按钮状态
@@ -598,7 +598,7 @@
     }
     // 如果是新图层，则添加到地图
     else {
-      console.log(`正在加载数据集: ${dataset.name}`);
+      console.log(`Loading Dataset: ${dataset.name}`);
       const imageryProvider = new Cesium.SingleTileImageryProvider({
         url: dataset.image_url,
         rectangle: Cesium.Rectangle.fromDegrees(
@@ -663,7 +663,7 @@
             icon = '☁️'; // Google Drive 文件的图标
           }
           button.textContent = `${icon} ${dataset.name}`;
-          button.title = `加载/卸载 ${dataset.name}`;
+          button.title = `Load/Unload ${dataset.name}`;
           button.dataset.datasetId = dataset.id;
 
           // 检查图层是否已在 activeLayers 中，以保持按钮状态
@@ -694,8 +694,8 @@
       });
 
     } catch (error) {
-      console.error("获取数据集列表失败:", error);
-      listContainer.innerHTML = '<p style="color: #f00; font-size: 12px;">加载列表失败！</p>';
+      console.error("Retrieving Data List Failed:", error);
+      listContainer.innerHTML = '<p style="color: #f00; font-size: 12px;">Failed to Load Data List</p>';
     }
   }
 
@@ -768,7 +768,7 @@
 
   async function handleFiles(files) {
     if (files.length === 0) {
-      alert('请选择一个文件');
+      alert('Please Select a File');
       return;
     }
     const file = files[0];
@@ -789,12 +789,12 @@
         alert(result.message); // 弹出成功提示
         fetchAndDisplayDatasets(); // 上传成功后，刷新数据集列表
       } else {
-        throw new Error(result.error || '上传失败');
+        throw new Error(result.error || 'Upload Failed');
       }
 
     } catch (error) {
-      console.error("上传或处理文件时出错:", error);
-      alert(`处理失败: ${error.message}`);
+      console.error("Upload or Process Error:", error);
+      alert(`Process Failed: ${error.message}`);
     } finally {
       document.getElementById('loadingOverlay').style.display = 'none';
     }
