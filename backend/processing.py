@@ -1,77 +1,116 @@
+# -*- coding: utf-8 -*-
 import os
 import uuid
+import tempfile
+import boto3
 import rasterio
 from rasterio.warp import transform_bounds
 import numpy as np
 from PIL import Image
 import psycopg2
+import psycopg2.extras
 
-# 项目的根目录
-BASE_DIR = os.path.dirname(__file__)
-STATIC_FOLDER = os.path.join(BASE_DIR, 'static')
-os.makedirs(os.path.join(STATIC_FOLDER, 'processed'), exist_ok=True)
+# --- 配置 ---
+# 从环境变量中获取配置，这是部署的最佳实践
+S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME')
+AWS_DEFAULT_REGION = os.environ.get('AWS_DEFAULT_REGION')
+S3_PREVIEW_PREFIX = 'previews/'
 
-# 新的 PostgreSQL 连接配置
-DB_CONFIG = {
-    "host": "localhost",
-    "database": "geotiff_backend",        # 你创建的数据库名
-    "user": "postgres",              # 你创建的用户名
-    "password": "Liaobw020809!" # 你设置的密码
-}
+# 初始化 boto3 客户端
+s3_client = boto3.client('s3', region_name=AWS_DEFAULT_REGION)
 
+# --- 数据库连接 ---
 def get_db_connection():
-    """创建 PostgreSQL 数据库连接"""
-    conn = psycopg2.connect(**DB_CONFIG)
+    """建立与 PostgreSQL 数据库的连接 (凭证来自环境变量)"""
+    conn = psycopg2.connect(
+        host=os.environ.get('DB_HOST'),
+        database=os.environ.get('DB_NAME'),
+        user=os.environ.get('DB_USER'),
+        password=os.environ.get('DB_PASSWORD')
+    )
     return conn
 
-def process_and_insert_geotiff(local_file_path, source_to_record, category_id, source_type):
-    """
-    处理单个 GeoTIFF 文件并将其元数据插入数据库。
-    这个新版本区分了要处理的本地文件路径和要记录的来源路径。
-
-    :param local_file_path: 本地 GeoTIFF 文件的完整路径，用于被 Rasterio 打开。
-    :param source_to_record: 要记录到数据库 source_path 字段的唯一标识符。
-    :param category_id: 该文件所属分类的 ID。
-    :return: 成功则返回 True，否则返回 False。
-    """
-    conn = None
+# --- S3 辅助函数 ---
+def upload_file_to_s3(file_path, object_key):
+    """将本地文件上传到 S3 并设置为公开可读"""
     try:
-        print(f"开始处理: {local_file_path}")
-        # 数据集名称仍然从本地文件名中获取
-        dataset_name = os.path.splitext(os.path.basename(local_file_path))[0]
+        s3_client.upload_file(
+            file_path,
+            S3_BUCKET_NAME,
+            object_key,
+            ExtraArgs={'ContentType': 'image/png', 'ACL': 'public-read'}
+        )
+        print(f"成功上传文件到 s3://{S3_BUCKET_NAME}/{object_key}")
+    except Exception as e:
+        print(f"S3 上传失败: {e}")
+        raise
 
-        # 使用 local_file_path 来打开和处理文件
-        with rasterio.open(local_file_path) as dataset:
-            # ... (这部分图像处理和坐标转换的代码完全不变) ...
+def get_s3_public_url(object_key):
+    """根据 S3 区域和存储桶名称构建公开 URL"""
+    return f"https://{S3_BUCKET_NAME}.s3.{AWS_DEFAULT_REGION}.amazonaws.com/{object_key}"
+
+# --- 核心处理函数 ---
+def process_geotiff_and_upload(local_geotiff_path):
+    """
+    处理本地 GeoTIFF 文件，生成预览图，上传至 S3，并返回所需元数据。
+    :param local_geotiff_path: 服务器上临时 GeoTIFF 文件的路径。
+    :return: 包含 wkt_polygon 和 preview_url 的字典。
+    """
+    try:
+        with rasterio.open(local_geotiff_path) as dataset:
+            # 1. 坐标和范围转换
             wgs84_bounds = transform_bounds(dataset.crs, {'init': 'epsg:4326'}, *dataset.bounds)
-            band1 = dataset.read(1)
-            min_val, max_val = np.min(band1), np.max(band1)
-            normalized_band = ((band1 - min_val) / (max_val - min_val) * 255).astype(np.uint8) if max_val > min_val else np.zeros(band1.shape, dtype=np.uint8)
-            img = Image.fromarray(normalized_band, 'L')
-            unique_filename = f"{dataset_name}_{uuid.uuid4().hex[:8]}.png"
-            output_filepath = os.path.join(STATIC_FOLDER, 'processed', unique_filename)
-            img.save(output_filepath)
             wkt_polygon = f'POLYGON(({wgs84_bounds[0]} {wgs84_bounds[1]}, {wgs84_bounds[2]} {wgs84_bounds[1]}, {wgs84_bounds[2]} {wgs84_bounds[3]}, {wgs84_bounds[0]} {wgs84_bounds[3]}, {wgs84_bounds[0]} {wgs84_bounds[1]}))'
 
-            conn = get_db_connection()
-            cursor = conn.cursor()
+            # 2. 图像处理，生成预览图
+            band1 = dataset.read(1)
+            min_val, max_val = np.min(band1), np.max(band1)
+            if max_val > min_val:
+                normalized_band = ((band1 - min_val) / (max_val - min_val) * 255).astype(np.uint8)
+            else:
+                normalized_band = np.zeros(band1.shape, dtype=np.uint8)
 
-            # --- 关键修改 ---
-            # 在 INSERT 语句中，使用 source_to_record 参数来填充 source_path 字段
-            cursor.execute(
-                "INSERT INTO datasets (name, image_url, geom, source_path, category_id, source_type) VALUES (%s, %s, ST_GeomFromText(%s, 4326), %s, %s, %s)",
-                (dataset_name, 'static/processed/' + unique_filename, wkt_polygon, source_to_record, category_id, source_type)
-            )
-            conn.commit()
-            cursor.close()
-            print(f"✅ 成功入库: {dataset_name} (来源: {source_type})")
-            return True
+            img = Image.fromarray(normalized_band, 'L')
+            
+            # 3. 将预览图保存到临时文件
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_preview:
+                img.save(temp_preview.name, format='PNG')
+                temp_preview_path = temp_preview.name
 
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        print(f"❌ 处理失败: {local_file_path}. 错误: {e}")
-        return False
+        # 4. 上传预览图到 S3
+        s3_preview_key = f"{S3_PREVIEW_PREFIX}{uuid.uuid4()}.png"
+        upload_file_to_s3(temp_preview_path, s3_preview_key)
+        preview_url = get_s3_public_url(s3_preview_key)
+
+        return {
+            "wkt_polygon": wkt_polygon,
+            "preview_url": preview_url
+        }
+
     finally:
-        if conn:
-            conn.close()
+        # 5. 清理临时预览图文件
+        if 'temp_preview_path' in locals() and os.path.exists(temp_preview_path):
+            os.remove(temp_preview_path)
+
+
+def insert_dataset_to_db(conn, name, image_url, geom_wkt, source_path, source_type, category_id):
+    """
+    将数据集的元数据插入到数据库中。
+    """
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO datasets (name, image_url, geom, source_path, source_type, category_id) 
+            VALUES (%s, %s, ST_GeomFromText(%s, 4326), %s, %s, %s)
+            """,
+            (name, image_url, geom_wkt, source_path, source_type, category_id)
+        )
+        conn.commit()
+        print(f"✅ 成功入库: {name} (来源: {source_type})")
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ 数据库插入失败: {name}. 错误: {e}")
+        raise
+    finally:
+        cursor.close()
