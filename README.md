@@ -67,8 +67,8 @@ The development of GeoAI currently faces a core bottleneck: the scarcity of high
 
 ```mermaid
 graph TD
-    A[User Browser] --> B{Frontend UI (CesiumJS)};
-    B --> C{Backend API Service (Flask)};
+    A[User Browser] --> B{"Frontend UI (CesiumJS)"};
+    B --> C{"Backend API Service (Flask)"};
     C --> D[PostgreSQL/PostGIS Database];
     C --> E[File System / Object Storage];
     F[Data Ingestion Scripts] --> D;
